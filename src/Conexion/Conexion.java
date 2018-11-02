@@ -5,7 +5,11 @@
  */
 package Conexion;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -57,14 +61,13 @@ public class Conexion {
         
 
     }
-    public void InsertDataCars(int id_car_taxi, String marca_car_taxi, 
-             String chapa_car_taxi,int service_type_car_taxi,
-     int motor_type_car_taxi,ArrayList<File> Fotos,int condition_air,
-     double precio, String descripcion, String horario) throws SQLException {
+    public void InsertDataCars(int id_car_taxi,int id_own_cars_taxis, String marca_car_taxi, String chapa_car_taxi,int service_type_car_taxi,
+    int motor_type_car_taxi,ArrayList<File> Fotos,int condition_air,double precio, String descripcion, String horario, int portada) throws SQLException, IOException {
         
         
         String sql = "INSERT INTO car_taxi(id_car_taxi,"
                 + "marca_car_taxi,"
+                + "id_own_cars_taxis,"
                 + "chapa_car_taxi,"
                 + "service_type_car_taxi,"
                 + "motor_type_car_taxi,"
@@ -74,30 +77,53 @@ public class Conexion {
                 + "condition_air,"
                 + "precio,"
                 + "desc,"
-                + "horario)"
-                + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?)";
+                + "horario,"
+                + "portada)"
+                + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         if(id_car_taxi == -1){
             System.err.println("Problemas obteniendo Index");
         }else{
         PreparedStatement pstmt = conn.prepareStatement(sql);
         pstmt.setInt(1, id_car_taxi);
-        pstmt.setString(2, marca_car_taxi);
-        pstmt.setString(3, chapa_car_taxi);
-        pstmt.setInt(4, service_type_car_taxi);
-        pstmt.setInt(5, motor_type_car_taxi);
+        pstmt.setInt(2, id_own_cars_taxis);
+        pstmt.setString(3, marca_car_taxi);
+        pstmt.setString(4, chapa_car_taxi);
+        pstmt.setInt(5, service_type_car_taxi);
+        pstmt.setInt(6, motor_type_car_taxi);
         //Fotos 3
-        pstmt.setInt(9, condition_air);
-        pstmt.setDouble(10, precio);
-        pstmt.setString(11, descripcion);
-        pstmt.setString(12, horario);
-        pstmt.executeUpdate();
+        for(int i =0; i<Fotos.size(); i++){
+          pstmt.setBytes(7+i, readFile(Fotos.get(i).getAbsolutePath()));
+        }     
+        pstmt.setInt(10, condition_air);
+        pstmt.setDouble(11, precio);
+        pstmt.setString(12, descripcion);
+        pstmt.setString(13, horario);
+         pstmt.setInt(14, portada);
+        pstmt.executeUpdate(); 
         }
         
 
     }
+      private byte[] readFile(String file) {
+          ByteArrayOutputStream bos = null;
+        try {
+            File f = new File(file);
+            FileInputStream fis = new FileInputStream(f);
+            byte[] buffer = new byte[1024];
+            bos = new ByteArrayOutputStream();
+            for (int len; (len = fis.read(buffer)) != -1;) {
+                bos.write(buffer, 0, len);
+            }
+        } catch (FileNotFoundException e) {
+            System.err.println(e.getMessage());
+        } catch (IOException e2) {
+            System.err.println(e2.getMessage());
+        }
+        return bos != null ? bos.toByteArray() : null;
+    }
 
     public int GetIndexDuenno() throws SQLException {
-        String sql = "SELECT * FROM own_cars_taxis";
+        String sql = "SELECT * FROM sqlite_sequence";
         int index=-1;
         if (conn.isClosed()) {
             System.out.println("Coneccion Cerrada");
@@ -106,13 +132,12 @@ public class Conexion {
             ResultSet rs = stmt.executeQuery(sql);
             ArrayList<Integer> enteros = new ArrayList();
             while (rs.next()) {
-                enteros.add(rs.getInt("id_own_cars_taxis"));
+                if(rs.getString("name").equals("own_cars_taxis") ){
+                  index = rs.getInt("seq");
+                }
+               
             }
-            if (enteros.size() == 0) {
-                index= 0;
-            } else {
-                index = enteros.get(0);
-            }
+           
         }
         return index;
 
